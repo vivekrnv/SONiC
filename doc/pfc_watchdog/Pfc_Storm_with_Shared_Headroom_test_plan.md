@@ -1,28 +1,34 @@
-# PFC Storm with Shared Headroom test plan
+# PFC Storm with Shared Headroom Test Plan
 
 ## Motivation
 
-When the Buffer occupany is filled upto Shared Headroom and a PFC Storm is seen at the same time, PFC WatchDog on the Melanox Devices applies Zero Buffer Profiles on Ingress PG and Egress Queues. 
+When a PFC Storm is seen, PFC WatchDog on the Melanox Devices applies Zero Buffer Profiles on Ingress PG and Egress Queues. However if the buffer occupany has already crossed Shared Headroom (i.e. Shared Buffer + Xon) when a PFC Storm is detected, a bug was recently found on mellanox platform. 
 
-When the PFC_WD is restored and the original buffer profile is applied back the ASIC has a bug which thinks that the occupancy is still above Xon and keeps sending PFC frames to the peer link even though the original occupancy is under Xon.
+The bug is seen after the PFC Watch dog is restored. After PFC_WD is restored, the original buffer profile is applied back. The ASIC had an accounting bug which makes it think that the occupancy is still above Xoff and the DUT keeps sending PFC frames to the peer link even though the actual occupancy is under Xon.
 
-Owing to this, the community decided not to apply ZeroBufferProfile to Ingress PG during a PFC Storm.
+Although this was fixed in the FW, the community decided not to adopt this solution because of an extra delay incurred in this Solution. Thus the community decided to modify the SONiC Flow to not apply ZeroBufferProfile to Ingress PG during a PFC Storm.  
 
-Thus the test case is added to cover this scenario
+Thus the test case is added to cover this scenario and check if the faulty accounting scenario is not seen. 
 
 **Note:** 
 + This test case is only intended for Mellanox Platforms
-+ This test case requires an RPC image 
++ This test case requires an RPC image
 
-## Overview
+## Test Plan
 + Verify if the shared headroom is enabled
-+ Simulate a buffer congestion in the ingress PG for the DUT source port so that the occupancy crosses into the shared headroom region
-   - Achieve this by closing the dut tx port `sai_thrift_port_tx_disable` call https://github.com/Azure/sonic-mgmt/blob/master/tests/saitests/switch.py#L624.
-+  - Send pkts 
-+ Trigger a PFC Storm directed towards the DUT source port
-+ PFC Watchdog is triggered and Zero buffer profile is applied only on egress
-+ Drain the Ingress buffers to drop the occupancy under Xon
-+ Check the Tx PFC Counters on the DUT source ports and verify nothing is sent after the ingress buffers are drained
++ Make sure buffer occupancy crosses into the shared headroom region
+   - Achieve buffer congestion by closing the dut tx port using `sai_thrift_port_tx_disable` API: https://github.com/Azure/sonic-mgmt/blob/master/tests/saitests/switch.py#L624.
+   - Send pkts from the PTF docker which are destined to egress out of the dut tx port.
+   - Make sure to send atleast num_pkts_pfs_frame + private_headroom pkts pkts
+   - num_pkts_pfs_frame: num of pkts required to be sent in order to trigger a PFC frame from the DUT. More on this here: https://github.com/Azure/sonic-mgmt/blob/master/tests/qos/files/mellanox/qos_param_generator.py
+   - private_headroom_pkts is specific to mellanox which is in the order of a few pkts.
+    
++ Trigger a PFC storm directed towards the DUT Rx port
++ PFC Watchdog is triggered
++ After PFC WD is restored, drain the Ingress buffers to drop the occupancy under Xon
+  - Achieve this by re-opening dut tx port using `sai_thrift_port_tx_enable` API.
+  - This'll drain the dut rx buffers and the occupancy falls below Xon.
++ Check the Rx PFC Counters on the DUT after the packets are drained. They shouldn't be incremented as the occupancy has fallen below Xon
 
 
 
