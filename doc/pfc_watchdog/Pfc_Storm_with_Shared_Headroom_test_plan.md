@@ -29,9 +29,3 @@ Thus the test case is added to cover this scenario and check if the faulty accou
   - Achieve this by re-opening dut tx port using `sai_thrift_port_tx_enable` API.
   - This'll drain the dut rx buffers and the occupancy falls below Xon.
 + Check the Rx PFC Counters on the DUT after the packets are drained. They shouldn't be incremented as the occupancy has fallen below Xon
-
-
-
-
-
-
