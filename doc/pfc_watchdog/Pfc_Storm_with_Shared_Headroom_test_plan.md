@@ -2,13 +2,9 @@
 
 ## Motivation
 
-When a PFC Storm is seen, PFC WatchDog on the Melanox Devices applies Zero Buffer Profiles on Ingress PG and Egress Queues. However if the buffer occupany has already crossed Shared Headroom (i.e. Shared Buffer + Xon) when a PFC Storm is detected, a bug was recently found on mellanox platform. 
+This test covers the scenrio when a PFC Watchdog is applied on a port which already has it's occupancy crossed into shared headroom. 
 
-The bug is seen after the PFC Watch dog is restored. After PFC_WD is restored, the original buffer profile is applied back. The ASIC had an accounting bug which makes it think that the occupancy is still above Xoff and the DUT keeps sending PFC frames to the peer link even though the actual occupancy is under Xon.
-
-Although this was fixed in the FW, the community decided not to adopt this solution because of an extra delay incurred in this Solution. Thus the community decided to modify the SONiC Flow to not apply ZeroBufferProfile to Ingress PG during a PFC Storm.  
-
-Thus the test case is added to cover this scenario and check if the faulty accounting scenario is not seen. 
+The test checks if any PFC Frames are sent to the peer link from the DUT port. 
 
 **Note:** 
 + This test case is only intended for Mellanox Platforms
@@ -27,5 +23,5 @@ Thus the test case is added to cover this scenario and check if the faulty accou
 + PFC Watchdog is triggered
 + After PFC WD is restored, drain the Ingress buffers to drop the occupancy under Xon
   - Achieve this by re-opening dut tx port using `sai_thrift_port_tx_enable` API.
-  - This'll drain the dut rx buffers and the occupancy falls below Xon.
-+ Check the Rx PFC Counters on the DUT after the packets are drained. They shouldn't be incremented as the occupancy has fallen below Xon
+  - This'll drain the  buffers and the occupancy falls below Xon.
++ Check the Tx PFC Counters on the DUT source port which was stormed after the packets are drained. They shouldn't be incremented as the occupancy has fallen below Xon
